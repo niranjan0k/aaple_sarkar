@@ -1,16 +1,18 @@
 from django.http import HttpResponseRedirect, HttpResponse
 from django.shortcuts import redirect, render
+from django.views.decorators.csrf import csrf_exempt
 import requests
 import json
 from utility.common import simple_triple_des, simple_triple_des_decrypt, generate_checksum_value,\
 string_to_byte_array, byte_array_to_string, convert_xml_to_dataset, set_app_status
 
 # Constants
-ClientCode = "BMCDEPT"
-CheckSumKey = "BMccDL9r5R2Z"
-EncryptKey = "@bm@cde@m@h@0nl!ne@11823"
-EncryptIV = "BMC@02@1"
+ClientCode = "NWMCDeptN"
+CheckSumKey = "GNWMCA9v4G5M"
+EncryptKey = "@pn@NWM@m@h@0nl!ne@30408"
+EncryptIV = "NWM@02@4"
 ApplicationID = "8355-CBRRC-23-01613"
+Department = "NWMCN"
 PayStatus = "N"
 Digital_status = "N"
 serviceDays = "120"
@@ -25,43 +27,47 @@ Name = "ApplicantName"
 return_url = "http://localhost:51861/Home/PayComplete"
 ServiceID = "7083"
 
-
-def login_pg(request, str):
+@csrf_exempt
+def login_pg(request):
+    params = request.POST.copy() 
+    params.update(request.GET)
     print("hello")
-    # Decrypt the querystring and obtain token sent by AapleSarkar application
-    url_value = str
-    request_decrypted = simple_triple_des_decrypt(str, EncryptKey, EncryptIV)
-    param = request_decrypted.split('|')
+    str = params.get('str')
+    if str is not None:
+        # Decrypt the querystring and obtain token sent by AapleSarkar application
+        url_value = str
+        request_decrypted = simple_triple_des_decrypt(str, EncryptKey, EncryptIV)
+        param = request_decrypted.split('|')
 
-    if param and len(param) > 0:
-        usr_id, usr_timestamp, usr_session, client_checksum_value, str_service_cookie = param
+        if param and len(param) > 0:
+            usr_id, usr_timestamp, usr_session, client_checksum_value, str_service_cookie = param
 
-        # Validation of Checksum sent by AapleSarkar application
-        chk_value_raw_data = f"{usr_id}|{usr_timestamp}|{usr_session}|{CheckSumKey}|{str_service_cookie}"
-        calculated_checksum_value = generate_checksum_value(chk_value_raw_data)
+            # Validation of Checksum sent by AapleSarkar application
+            chk_value_raw_data = f"{usr_id}|{usr_timestamp}|{usr_session}|{CheckSumKey}|{str_service_cookie}"
+            calculated_checksum_value = generate_checksum_value(chk_value_raw_data)
 
-        if client_checksum_value == calculated_checksum_value:
-            # Send the initial request string received from AapleSarkar application again to AapleSarkar application for validation and other processing
-            response_xml = requests.get(f'http://your-aaple-sarkar-url/{str}/{ClientCode}').text
-            response_decrypted = simple_triple_des_decrypt(response_xml, EncryptKey, EncryptIV)
-            ds = convert_xml_to_dataset(response_decrypted)
+            if client_checksum_value == calculated_checksum_value:
+                # Send the initial request string received from AapleSarkar application again to AapleSarkar application for validation and other processing
+                response_xml = requests.get(f'http://your-aaple-sarkar-url/{str}/{ClientCode}').text
+                response_decrypted = simple_triple_des_decrypt(response_xml, EncryptKey, EncryptIV)
+                ds = convert_xml_to_dataset(response_decrypted)
 
-            if url_value:
-                return render(request, 'department_form.html', {
-                    'username': ds.get('Username', ''),
-                    'password': ds.get('Password', ''),
-                    'email': ds.get('EmailID', ''),
-                    'mobile_no': ds.get('MobileNo', ''),
-                    'full_name': ds.get('FullName', ''),
-                    'full_name_in_marathi': ds.get('FullName_mr', ''),
-                    'gender': ds.get('Gender', ''),
-                    'date_of_birth': ds.get('DOB', ''),
-                    'uid_no': ds.get('UIDNO', ''),
-                    'pan_no': ds.get('PANNo', ''),
-                    'track_id': ds.get('TrackId', ''),
-                    'user_id': ds.get('UserID', ''),
-                })
-    return HttpResponseRedirect('/error-page')
+                if url_value:
+                    return render(request, 'department_form.html', {
+                        'username': ds.get('Username', ''),
+                        'password': ds.get('Password', ''),
+                        'email': ds.get('EmailID', ''),
+                        'mobile_no': ds.get('MobileNo', ''),
+                        'full_name': ds.get('FullName', ''),
+                        'full_name_in_marathi': ds.get('FullName_mr', ''),
+                        'gender': ds.get('Gender', ''),
+                        'date_of_birth': ds.get('DOB', ''),
+                        'uid_no': ds.get('UIDNO', ''),
+                        'pan_no': ds.get('PANNo', ''),
+                        'track_id': ds.get('TrackId', ''),
+                        'user_id': ds.get('UserID', ''),
+                    })
+    return HttpResponse('Something went wrong')
 
 def department_form(request, input=None):
     _PayDate = "NA"

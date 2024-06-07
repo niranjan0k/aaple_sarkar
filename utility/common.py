@@ -4,6 +4,8 @@ from zeep import Client
 import hashlib
 import xml.etree.ElementTree as ET
 from io import StringIO
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+from cryptography.hazmat.backends import default_backend
 
 def simple_triple_des(data, str_key, str_iv):
     key = bytes(str_key, 'utf-8')
@@ -16,15 +18,10 @@ def simple_triple_des(data, str_key, str_iv):
 def simple_triple_des_decrypt(data, str_key, str_iv):
     key = bytes(str_key, 'utf-8')
     iv = bytes(str_iv, 'utf-8')
-    data_bytes = bytes.fromhex(data)
+    data_bytes = string_to_byte_array(data)
     tdes = DES3.new(key, DES3.MODE_CBC, iv)
     dec = unpad(tdes.decrypt(data_bytes), DES3.block_size)
     return dec.decode('utf-8')
-
-def generate_checksum_value(req_str):
-    ascii_encoding = 'ascii'
-    checksum_value = hashlib.md5(req_str.encode(ascii_encoding)).hexdigest()
-    return checksum_value
 
 def string_to_byte_array(hex_string):
     number_chars = len(hex_string)
@@ -32,6 +29,13 @@ def string_to_byte_array(hex_string):
     for i in range(0, number_chars, 2):
         bytes_array[i // 2] = int(hex_string[i:i+2], 16)
     return bytes_array
+
+def generate_checksum_value(req_str):
+    ascii_encoding = 'ascii'
+    checksum_value = hashlib.md5(req_str.encode(ascii_encoding)).hexdigest()
+    return checksum_value
+
+
 
 def byte_array_to_string(byte_array):
     hex_string = ''.join('{:02X}'.format(byte) for byte in byte_array)
